@@ -78,7 +78,7 @@ impl SubscriberCallback<TradeLogSbModel> for TradeLogSbListener {
                 .iter()
                 .map(|x| {
                     (
-                        x.key.clone(),
+                        format!("dyn_{}", x.key),
                         serde_yaml::to_string(
                             &serde_yaml::from_str::<serde_yaml::Value>(&x.value).unwrap(),
                         )
