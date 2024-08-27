@@ -23,7 +23,7 @@ async fn main() {
     service_context.register_sb_subscribe(Arc::new(TradeLogSbListener::new(
         elastic_client,
         settings.env_source.clone(),
-    )), service_sdk::my_service_bus::abstractions::subscriber::TopicQueueType::DeleteOnDisconnect).await;
+    )), service_sdk::my_service_bus::abstractions::subscriber::TopicQueueType::Permanent).await;
 
     println!("App started");
     service_context.start_application().await;
