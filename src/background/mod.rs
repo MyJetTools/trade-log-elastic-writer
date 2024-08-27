@@ -53,15 +53,55 @@ impl SubscriberCallback<TradeLogSbModel> for TradeLogSbListener {
         &self,
         messages_reader: &mut MessagesReader<TradeLogSbModel>,
     ) -> Result<(), MySbSubscriberHandleError> {
-        while let Some(message) = messages_reader.get_next_message() {
-            let operation = message.take_message();
+        while let Some(messages) = messages_reader.get_all() {
+            let logs_to_upload = messages
+                .map(|x| {
+                    let operation = x.take_message();
+                    let data: HashMap<String, String> = operation
+                        .data
+                        .iter()
+                        .map(|x| {
+                            (
+                                format!("dyn_{}", x.key),
+                                serde_yaml::to_string(
+                                    &serde_yaml::from_str::<serde_yaml::Value>(&x.value).unwrap(),
+                                )
+                                .unwrap()
+                                .to_string(),
+                            )
+                        })
+                        .collect();
+
+                    let elastic_model = TradeLogElasticModel {
+                        date_time_unix_micros: operation.date_time_unix_micros / 1000,
+                        trader_id: operation.trader_id,
+                        account_id: operation.account_id,
+                        component: operation.component,
+                        process_id: operation.process_id,
+                        operation_id: operation.operation_id,
+                        message: operation.message,
+                        env_source: self.env_source.clone().to_uppercase(),
+                    };
+
+                    let mut elastic_model = serde_json::to_value(&elastic_model).unwrap();
+
+                    if let Value::Object(ref mut map) = elastic_model {
+                        for (key, value) in data {
+                            map.insert(key, Value::String(value));
+                        }
+                    }
+
+                    elastic_model
+                })
+                .collect::<Vec<_>>();
+
             let index_name = "trade_log";
             let pattern = ElasticIndexRotationPattern::Day;
 
             let mut index = self.last_created_index.lock().await;
             let current_date_index = self
                 .elastic
-                .get_index_name_with_pattern(index_name, pattern.clone());
+                .get_index_name_with_pattern(index_name, &pattern);
 
             if index.is_none() {
                 *index = Some(current_date_index.clone());
@@ -73,49 +113,11 @@ impl SubscriberCallback<TradeLogSbModel> for TradeLogSbListener {
                 init_elastic_trade_log_index(&self.elastic, index_name, &pattern).await;
             }
 
-            let data: HashMap<String, String> = operation
-                .data
-                .iter()
-                .map(|x| {
-                    (
-                        format!("dyn_{}", x.key),
-                        serde_yaml::to_string(
-                            &serde_yaml::from_str::<serde_yaml::Value>(&x.value).unwrap(),
-                        )
-                        .unwrap()
-                        .to_string(),
-                    )
-                })
-                .collect();
-
-            let elastic_model = TradeLogElasticModel {
-                date_time_unix_micros: operation.date_time_unix_micros / 1000,
-                trader_id: operation.trader_id,
-                account_id: operation.account_id,
-                component: operation.component,
-                process_id: operation.process_id,
-                operation_id: operation.operation_id,
-                message: operation.message,
-                env_source: self.env_source.clone().to_uppercase(),
-            };
-
-            let mut elastic_model = serde_json::to_value(&elastic_model).unwrap();
-
-            if let Value::Object(ref mut map) = elastic_model {
-                for (key, value) in data {
-                    map.insert(key, Value::String(value));
-                }
-            }
-
             let response = self
                 .elastic
-                .write_entity(index_name, pattern, elastic_model.clone())
+                .write_entities(index_name, &pattern, logs_to_upload)
                 .await
                 .unwrap();
-
-            if response.status_code().as_u16() != 200 && response.status_code().as_u16() != 201 {
-                println!("Model: {:?}", elastic_model);
-            };
 
             println!("Status code: {}", response.status_code());
         }
@@ -145,7 +147,7 @@ async fn init_elastic_trade_log_index(
     });
 
     let response = elastic
-        .create_index_mapping(index_name, index_pattern.clone(), mapping)
+        .create_index_mapping(index_name, index_pattern, mapping)
         .await;
 
     println!("Create index response: {:#?}", response);

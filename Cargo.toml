@@ -8,7 +8,7 @@ service-sdk = { tag = "0.2.6", git = "https://github.com/MyJetTools/service-sdk.
     "my-service-bus",
 ] }
 trade-log = { git = "https://github.com/MyJetTools/trade-log", tag = "0.1.7" }
-elastic-client = { git = "https://github.com/MyJetTools/elastic-client", tag = "0.1.2" }
+elastic-client = { git = "https://github.com/MyJetTools/elastic-client", tag = "0.1.3" }
 
 serde = { version = "*", features = ["derive"] }
 tokio = "*"
