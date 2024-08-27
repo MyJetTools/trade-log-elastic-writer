@@ -1,0 +1,20 @@
+[package]
+name = "trade-log-elastic-writer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+service-sdk = { tag = "0.2.6", git = "https://github.com/MyJetTools/service-sdk.git", features = [
+    "my-service-bus",
+] }
+trade-log = { git = "https://github.com/MyJetTools/trade-log", tag = "0.1.7" }
+elastic-client = { git = "https://github.com/MyJetTools/elastic-client", tag = "0.1.2" }
+
+serde = { version = "*", features = ["derive"] }
+tokio = "*"
+prost = "*"
+prost-types = "*"
+elasticsearch = "8.5.0-alpha.1"
+serde_json = "*"
+serde_yaml = "*"
+chrono = "*"
