@@ -1,7 +1,6 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use elastic_client::{ElasticClient, ElasticIndexRotationPattern};
-use elasticsearch::{indices::IndicesCreateParts, Elasticsearch, IndexParts};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use service_sdk::{
@@ -95,10 +94,11 @@ impl SubscriberCallback<TradeLogSbModel> for TradeLogSbListener {
                 })
                 .collect::<Vec<_>>();
 
-            let index_name = "trade_log";
+            let index_name = &format!("trade_log_{}", self.env_source.to_lowercase());
             let pattern = ElasticIndexRotationPattern::Day;
 
             let mut index = self.last_created_index.lock().await;
+
             let current_date_index = self
                 .elastic
                 .get_index_name_with_pattern(index_name, &pattern);
