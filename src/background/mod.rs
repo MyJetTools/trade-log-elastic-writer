@@ -142,7 +142,18 @@ async fn init_elastic_trade_log_index(
                 "operation_id": { "type": "keyword" },
                 "env_source": { "type": "keyword" },
                 "message": { "type": "keyword" },
-            }
+            },
+            "dynamic_templates": [
+                {
+                  "dyn_text_fields": {
+                    "match": "dyn_*",
+                    "mapping": {
+                      "type": "text",
+                      "term_vector": "with_positions_offsets"
+                    }
+                  }
+                }
+              ]
         }
     });
 
