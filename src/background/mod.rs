@@ -119,7 +119,9 @@ impl SubscriberCallback<TradeLogSbModel> for TradeLogSbListener {
                 .await
                 .unwrap();
 
-            println!("Status code: {}", response.status_code());
+            if response.status_code() != 200 {
+                panic!("Elastic error: status {}", response.status_code());
+            }
         }
 
         Ok(())
